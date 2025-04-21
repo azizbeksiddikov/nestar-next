@@ -7,9 +7,7 @@ import { onError } from '@apollo/client/link/error';
 import { getJwtToken } from '../libs/auth';
 import { TokenRefreshLink } from 'apollo-link-token-refresh';
 import { sweetErrorAlert } from '../libs/sweetAlert';
-import { ThumbUpSharp } from '@mui/icons-material';
-import { isArrayBufferView } from 'util/types';
-
+import { socketVar } from './store';
 let apolloClient: ApolloClient<NormalizedCacheObject>;
 
 function getHeaders() {
@@ -26,10 +24,37 @@ const tokenRefreshLink = new TokenRefreshLink({
 		return true;
 	}, // @ts-ignore
 	fetchAccessToken: () => {
-		// execute refresh token
 		return null;
 	},
 });
+
+// Custom WebSocket client
+
+class LoggingWebSocket {
+	private socket: WebSocket;
+
+	constructor(url: string) {
+		this.socket = new WebSocket(`${url}?token=${getJwtToken()}`);
+
+		socketVar(this.socket);
+		this.socket.onopen = () => {
+			console.log('WebSocket connection!');
+		};
+
+		this.socket.onmessage = (msg) => {
+			console.log('WebSocket message', msg.data);
+		};
+		this.socket.onerror = (error) => {
+			console.log('WebSocket error', error);
+		};
+	}
+	send(data: string | ArrayBuffer | SharedArrayBuffer | Blob | ArrayBufferView) {
+		this.socket.send(data);
+	}
+	close() {
+		this.socket.close();
+	}
+}
 
 function createIsomorphicLink() {
 	if (typeof window !== 'undefined') {
@@ -59,6 +84,7 @@ function createIsomorphicLink() {
 					return { headers: getHeaders() };
 				},
 			},
+			webSocketImpl: LoggingWebSocket,
 		});
 
 		const errorLink = onError(({ graphQLErrors, networkError, response }) => {
@@ -108,20 +134,3 @@ export function initializeApollo(initialState = null) {
 export function useApollo(initialState: any) {
 	return useMemo(() => initializeApollo(initialState), [initialState]);
 }
-
-/**
-import { ApolloClient, InMemoryCache, createHttpLink } from "@apollo/client";
-
-// No Subscription required for develop process
-
-const httpLink = createHttpLink({
-  uri: "http://localhost:3007/graphql",
-});
-
-const client = new ApolloClient({
-  link: httpLink,
-  cache: new InMemoryCache(),
-});
-
-export default client;
-*/
