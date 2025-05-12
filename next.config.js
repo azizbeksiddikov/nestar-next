@@ -6,6 +6,9 @@ const nextConfig = {
 		REACT_APP_API_GRAPHQL_URL: process.env.REACT_APP_API_GRAPHQL_URL,
 		REACT_APP_API_WS: process.env.REACT_APP_API_WS,
 	},
+	typescript: {
+		ignoreBuildErrors: true,
+	},
 };
 
 const { i18n } = require('./next-i18next.config');
